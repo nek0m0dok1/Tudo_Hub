@@ -10,23 +10,17 @@ const profile = ref(null);
 // ローディング状態（初期値 true）
 const loading = ref(true);
 
-// 編集機能用変数
-const isEditing = ref(false);
-const newUsername = ref("");
-const updateLoading = ref(false);
-
 // プロフィール情報の取得
 const fetchProfile = async (userId) => {
   try {
     const { data, error } = await supabase
       .from("profiles")
-      .select("username, avatar_url")
+      .select("avatar_url")
       .eq("id", userId)
       .single();
 
     if (error) throw error;
     profile.value = data;
-    newUsername.value = data.username;
   } catch (error) {
     console.error("Error fetching profile:", error.message);
   }
@@ -49,32 +43,6 @@ onMounted(async () => {
     loading.value = false;
   });
 });
-
-// プロフィール（ユーザー名）更新処理
-const updateProfile = async () => {
-  if (!newUsername.value.trim()) return;
-
-  try {
-    updateLoading.value = true;
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        username: newUsername.value,
-        updated_at: new Date(),
-      })
-      .eq("id", user.value.id);
-
-    if (error) throw error;
-
-    profile.value.username = newUsername.value;
-    isEditing.value = false;
-  } catch (error) {
-    console.error("Error updating profile:", error.message);
-    alert("更新に失敗しました");
-  } finally {
-    updateLoading.value = false;
-  }
-};
 
 // Discord ログイン処理
 const signInWithDiscord = async () => {
@@ -119,57 +87,19 @@ const handlePosted = () => {
       v-else-if="user"
       style="border: 1px solid #ccc; padding: 20px; border-radius: 8px"
     >
-      <template v-if="profile">
-        <img
-          :src="profile.avatar_url"
-          alt="Avatar"
-          width="80"
-          height="80"
-          style="border-radius: 50%; object-fit: cover"
-        />
+      <img
+        :src="profile?.avatar_url || user.user_metadata?.avatar_url || user.user_metadata?.picture || 'https://cdn.discordapp.com/embed/avatars/0.png'"
+        alt="Avatar"
+        width="80"
+        height="80"
+        style="border-radius: 50%; object-fit: cover"
+      />
 
-        <div style="margin: 15px 0">
-          <div v-if="!isEditing">
-            <h2>{{ profile.username }}</h2>
-            <button
-              @click="isEditing = true"
-              style="font-size: 0.8em; cursor: pointer"
-            >
-              ユーザー名を変更
-            </button>
-          </div>
-
-          <div
-            v-else
-            style="
-              display: flex;
-              gap: 8px;
-              justify-content: center;
-              align-items: center;
-            "
-          >
-            <input
-              v-model="newUsername"
-              type="text"
-              placeholder="新しいユーザー名"
-              style="padding: 6px; border-radius: 4px; border: 1px solid #ccc"
-            />
-            <button
-              @click="updateProfile"
-              :disabled="updateLoading"
-              style="padding: 6px 12px; cursor: pointer"
-            >
-              保存
-            </button>
-            <button
-              @click="isEditing = false"
-              style="padding: 6px 12px; cursor: pointer"
-            >
-              キャンセル
-            </button>
-          </div>
-        </div>
-      </template>
+      <div style="margin: 15px 0">
+        <h2>
+          {{ user.user_metadata?.user_name || user.user_metadata?.name || user.user_metadata?.full_name || "Discordユーザー" }}
+        </h2>
+      </div>
 
       <p style="font-size: 0.8em; color: #666">ID: {{ user.id }}</p>
 

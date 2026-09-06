@@ -6,7 +6,6 @@ import { supabase } from '../supabase'
 const emit = defineEmits(['posted'])
 
 const title = ref('')
-const userName = ref('')
 const isLoading = ref(false)
 
 const handleSubmit = async () => {
@@ -14,11 +13,17 @@ const handleSubmit = async () => {
 
   isLoading.value = true
 
+  const { data: { user } } = await supabase.auth.getUser()
+  const discordUsername = user?.user_metadata?.user_name
+    || user?.user_metadata?.name
+    || user?.user_metadata?.full_name
+    || '名無し'
+
   // Supabase の ideas テーブルへ insert 処理
   const { error } = await supabase.from('ideas').insert([
     {
       title: title.value.trim(),
-      user_name: userName.value.trim() || '名無し',
+      user_name: discordUsername,
     },
   ])
 
@@ -39,17 +44,6 @@ const handleSubmit = async () => {
 
 <template>
   <form @submit.prevent="handleSubmit" class="idea-form">
-    <div class="form-group">
-      <label for="userName">名前 (任意)</label>
-      <input
-        id="userName"
-        v-model="userName"
-        type="text"
-        placeholder="例: たなか"
-        :disabled="isLoading"
-      />
-    </div>
-
     <div class="form-group">
       <label for="title">やりたいこと (必須)</label>
       <input
