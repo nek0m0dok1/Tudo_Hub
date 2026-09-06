@@ -1,0 +1,26 @@
+name: Prettier Check
+
+on:
+  pull_request:
+    branches:
+      - main # チェックしたいメインブランチ（master や develop などに適宜変更）
+
+jobs:
+  prettier:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm' # yarn や pnpm をお使いの場合は適宜変更してください
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Prettier Check
+        run: npx prettier --check .
