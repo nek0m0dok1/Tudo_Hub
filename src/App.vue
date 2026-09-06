@@ -104,7 +104,7 @@ const signOut = async () => {
     font-family: sans-serif;
     "
   >
-    <h1>Discord Auth App</h1>
+    <h1>Game Inbox</h1>
 
     <!-- 読込中（セッション復元待ち） -->
     <div v-if="loading">
