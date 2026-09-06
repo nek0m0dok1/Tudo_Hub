@@ -50,14 +50,14 @@ const handleSubmit = async () => {
         id="title"
         v-model="title"
         type="text"
-        placeholder="例: 今夜APEX / ボードゲーム"
+        placeholder="例: ねこもどきをフルボッコにするゲーム"
         required
         :disabled="isLoading"
       />
     </div>
 
     <button type="submit" :disabled="isLoading">
-      {{ isLoading ? '送信中...' : 'アイデアを突っ込む！' }}
+      {{ isLoading ? '送信中...' : 'ゲームを提案する！' }}
     </button>
   </form>
 </template>
