@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import { supabase } from "./supabase";
+import PostForm from './components/PostForm.vue'
 
 // 認証ユーザー情報（Supabase Auth）
 const user = ref(null);
@@ -91,20 +92,22 @@ const signOut = async () => {
   const { error } = await supabase.auth.signOut();
   if (error) console.error("Error logging out:", error.message);
 };
+
+// 送信成功時に発火するイベントのテスト
+const handlePosted = () => {
+  console.log('投稿イベントを受け取りました！Supabaseを確認してください。')
+}
 </script>
 
 <template>
-  <div
-    style="
-      width: 90%;
-      margin: 40px auto;
-      font-family: sans-serif;
-      text-align: center;
-      max-width: 500px;
-      font-family: sans-serif;
-    "
-  >
-    <h1>Game Inbox</h1>
+  <h1 class="page-title">Game Inbox</h1>
+
+  <div class="app-layout">
+    <main class="post-form-column">
+      <PostForm @posted="handlePosted" />
+    </main>
+
+    <div class="auth-column">
 
     <!-- 読込中（セッション復元待ち） -->
     <div v-if="loading">
@@ -207,5 +210,85 @@ const signOut = async () => {
         Discordでログイン
       </button>
     </div>
+    </div>
   </div>
 </template>
+
+<style scoped>
+.page-title {
+  width: 100%;
+  margin: 24px 0 0;
+  text-align: center;
+}
+
+.app-layout {
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 20px;
+  box-sizing: border-box;
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.post-form-column {
+  flex: 0 1 600px;
+  min-width: 0;
+  max-width: 600px;
+  box-sizing: border-box;
+}
+
+.post-form-column {
+  margin: 40px 0;
+}
+
+.auth-column {
+  flex: 0 1 360px;
+  width: 100%;
+  max-width: 360px;
+  margin: 40px 0;
+  font-family: sans-serif;
+  text-align: center;
+}
+
+.auth-column > div {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.auth-column h1 {
+  font-size: 36px;
+  margin: 20px 0;
+}
+
+.auth-column button {
+  max-width: 280px;
+  box-sizing: border-box;
+}
+
+@media (max-width: 760px) {
+  .app-layout {
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+
+  .post-form-column,
+  .auth-column {
+    flex-basis: auto;
+    width: 100%;
+    max-width: 600px;
+  }
+
+  .auth-column {
+    margin-top: 0;
+  }
+}
+.title {
+  text-align: center; /* テキストを中央揃え */
+  margin-top: 20px;   /* 上部に余白を作成 */
+  margin-bottom: 24px;
+}
+</style>
