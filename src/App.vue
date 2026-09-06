@@ -26,7 +26,7 @@ const fetchProfile = async (userId) => {
   }
 };
 
-// 初期化および認証状態の監視（ログイン保持の核心部分）
+// 初期化および認証状態の監視
 onMounted(async () => {
   // 1. 認証状態の変化を監視するリスナーを登録
   // ※Supabaseは自動でlocalStorageからセッションを復元し、INITIAL_SESSIONイベントを発行します
@@ -63,7 +63,7 @@ const signOut = async () => {
 
 // 送信成功時に発火するイベントのテスト
 const handlePosted = () => {
-  console.log('投稿イベントを受け取りました！Supabaseを確認してください。')
+  console.log('received an event')
 }
 </script>
 
@@ -217,8 +217,8 @@ const handlePosted = () => {
   }
 }
 .title {
-  text-align: center; /* テキストを中央揃え */
-  margin-top: 20px;   /* 上部に余白を作成 */
+  text-align: center;
+  margin-top: 20px;
   margin-bottom: 24px;
 }
 </style>
