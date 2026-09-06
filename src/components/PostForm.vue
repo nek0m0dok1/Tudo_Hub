@@ -70,6 +70,9 @@ const handleSubmit = async () => {
 
 <style scoped>
 .idea-form {
+  width: 100%;
+  max-width: 600px;
+  box-sizing: border-box;
   background: #f8f9fa;
   padding: 16px;
   border-radius: 8px;
