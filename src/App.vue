@@ -140,7 +140,7 @@ const handlePosted = () => {
         v-else
         style="border: 1px solid #ccc; padding: 20px; border-radius: 8px"
       >
-        <p>ログインが必要です。</p>
+        <p>ご利用にはログインが必要です。</p>
         <button
           @click="signInWithDiscord"
           style="
