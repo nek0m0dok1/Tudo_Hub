@@ -1,45 +1,48 @@
 <script setup>
-import { ref } from 'vue'
-import { supabase } from '../supabase'
+import { ref } from "vue";
+import { supabase } from "../supabase";
 
 // 親コンポーネントへ送信完了を伝えるイベント定義
-const emit = defineEmits(['posted'])
+const emit = defineEmits(["posted"]);
 
-const title = ref('')
-const isLoading = ref(false)
+const title = ref("");
+const isLoading = ref(false);
 
 const handleSubmit = async () => {
-  if (!title.value.trim()) return
+  if (!title.value.trim()) return;
 
-  isLoading.value = true
+  isLoading.value = true;
 
-  const { data: { user } } = await supabase.auth.getUser()
-  const discordUsername = user?.user_metadata?.user_name
-    || user?.user_metadata?.name
-    || user?.user_metadata?.full_name
-    || '名無し'
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const discordUsername =
+    user?.user_metadata?.user_name ||
+    user?.user_metadata?.name ||
+    user?.user_metadata?.full_name ||
+    "名無し";
 
   // Supabase の ideas テーブルへ insert 処理
-  const { error } = await supabase.from('ideas').insert([
+  const { error } = await supabase.from("ideas").insert([
     {
       title: title.value.trim(),
       user_name: discordUsername,
     },
-  ])
+  ]);
 
-  isLoading.value = false
+  isLoading.value = false;
 
   if (error) {
-    alert('投稿に失敗しました: ' + error.message)
-    console.error(error)
+    alert("投稿に失敗しました: " + error.message);
+    console.error(error);
   } else {
     // フォームのリセット
-    title.value = ''
-    
+    title.value = "";
+
     // 親コンポーネントへイベント通知（一覧の再取得などを促す）
-    emit('posted')
+    emit("posted");
   }
-}
+};
 </script>
 
 <template>
@@ -57,7 +60,7 @@ const handleSubmit = async () => {
     </div>
 
     <button type="submit" :disabled="isLoading">
-      {{ isLoading ? '送信中...' : 'ゲームを提案する！' }}
+      {{ isLoading ? "送信中..." : "ゲームを提案する！" }}
     </button>
   </form>
 </template>
