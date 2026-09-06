@@ -1,10 +1,11 @@
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, onUnmounted } from "vue";
 import { supabase } from "./supabase";
 import PostForm from "./components/PostForm.vue";
 
 // 認証ユーザー情報（Supabase Auth）
 const user = ref(null);
+const session = ref(null);
 // データベースから取得したプロフィール（public.profiles）
 const profile = ref(null);
 // ローディング状態（初期値 true）
@@ -27,21 +28,35 @@ const fetchProfile = async (userId) => {
 };
 
 // 初期化および認証状態の監視
+let removeAuthListener;
+
+const applySession = async (nextSession) => {
+  session.value = nextSession;
+  user.value = nextSession?.user ?? null;
+
+  if (user.value) {
+    await fetchProfile(user.value.id);
+  } else {
+    profile.value = null;
+  }
+
+  loading.value = false;
+};
+
 onMounted(async () => {
-  // 1. 認証状態の変化を監視するリスナーを登録
-  // ※Supabaseは自動でlocalStorageからセッションを復元し、INITIAL_SESSIONイベントを発行します
-  supabase.auth.onAuthStateChange(async (event, session) => {
-    user.value = session?.user ?? null;
+  const { data } = await supabase.auth.getSession();
+  await applySession(data.session);
 
-    if (user.value) {
-      await fetchProfile(user.value.id);
-    } else {
-      profile.value = null;
-    }
+  const { data: authData } = supabase.auth.onAuthStateChange(
+    (_event, nextSession) => {
+      void applySession(nextSession);
+    },
+  );
+  removeAuthListener = authData.subscription.unsubscribe;
+});
 
-    // セッション判定とプロフィール取得が完了したタイミングでローディングを解除
-    loading.value = false;
-  });
+onUnmounted(() => {
+  removeAuthListener?.();
 });
 
 // Discord ログイン処理
@@ -71,7 +86,7 @@ const handlePosted = () => {
   <h1 class="page-title">Game Inbox</h1>
 
   <div class="app-layout">
-    <main class="post-form-column">
+    <main v-if="session" class="post-form-column">
       <PostForm @posted="handlePosted" />
     </main>
 
@@ -125,7 +140,7 @@ const handlePosted = () => {
         v-else
         style="border: 1px solid #ccc; padding: 20px; border-radius: 8px"
       >
-        <p>アプリを利用するにはログインしてください。</p>
+        <p>ログインが必要です。</p>
         <button
           @click="signInWithDiscord"
           style="
