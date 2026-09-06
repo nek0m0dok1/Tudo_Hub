@@ -96,12 +96,12 @@ const signOut = async () => {
 <template>
   <div
     style="
-    width: 90%;
+      width: 90%;
       margin: 40px auto;
       font-family: sans-serif;
       text-align: center;
       max-width: 500px;
-    font-family: sans-serif;
+      font-family: sans-serif;
     "
   >
     <h1>Game Inbox</h1>
