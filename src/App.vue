@@ -86,7 +86,7 @@ const signInWithDiscord = async () => {
   if (error) console.error("Error logging in:", error.message);
 };
 
-// ログアウト処理（localStorageのセッション情報も自動破棄されます）
+// ログアウト処理（ローカルストレージのセッション情報を自動破棄）
 const signOut = async () => {
   const { error } = await supabase.auth.signOut();
   if (error) console.error("Error logging out:", error.message);
@@ -96,10 +96,12 @@ const signOut = async () => {
 <template>
   <div
     style="
-      max-width: 400px;
+    width: 90%;
       margin: 40px auto;
       font-family: sans-serif;
       text-align: center;
+      max-width: 500px;
+    font-family: sans-serif;
     "
   >
     <h1>Discord Auth App</h1>
