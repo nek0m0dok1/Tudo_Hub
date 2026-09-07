@@ -23,6 +23,12 @@ const handleSubmit = async () => {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  if (!user) {
+    isLoading.value = false;
+    alert("投稿にはログインが必要です。");
+    return;
+  }
+
   const discordUsername =
     user?.user_metadata?.user_name ||
     user?.user_metadata?.name ||
@@ -33,6 +39,7 @@ const handleSubmit = async () => {
   const { error } = await supabase.from("ideas").insert([
     {
       title: title.value.trim(),
+      user_id: user.id,
       user_name: discordUsername,
       team_id: props.teamId,
     },

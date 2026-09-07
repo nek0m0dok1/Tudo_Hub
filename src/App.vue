@@ -1,13 +1,15 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, onMounted, onUnmounted, watch } from "vue";
 import { supabase } from "./supabase";
 import PostForm from "./components/PostForm.vue";
+import PostCard from "./components/PostCard.vue";
 
 // 認証ユーザー情報（Supabase Auth）
 const user = ref(null);
 const session = ref(null);
 const teams = ref([]);
 const selectedTeamId = ref("");
+const ideas = ref([]);
 const showTeamModal = ref(false);
 const teamName = ref("");
 const creatingTeam = ref(false);
@@ -47,28 +49,10 @@ const fetchProfile = async (authUser) => {
   profile.value = { avatar_url: avatarUrl };
 };
 
-const fetchTeams = async (userId) => {
-  const { data: memberships, error: membershipError } = await supabase
-    .from("team_members")
-    .select("team_id")
-    .eq("user_id", userId);
-
-  if (membershipError) {
-    console.error("Error fetching team memberships:", membershipError.message);
-    return;
-  }
-
-  const teamIds = memberships.map((membership) => membership.team_id);
-  if (!teamIds.length) {
-    teams.value = [];
-    selectedTeamId.value = "";
-    return;
-  }
-
+const fetchTeams = async () => {
   const { data, error } = await supabase
     .from("teams")
     .select("id, name")
-    .in("id", teamIds)
     .order("name");
 
   if (error) {
@@ -76,10 +60,30 @@ const fetchTeams = async (userId) => {
     return;
   }
 
-  teams.value = data;
-  if (!teamIds.includes(selectedTeamId.value)) {
-    selectedTeamId.value = data[0]?.id ?? "";
+  teams.value = data ?? [];
+  if (!teams.value.some((team) => team.id === selectedTeamId.value)) {
+    selectedTeamId.value = teams.value[0]?.id ?? "";
   }
+};
+
+const fetchIdeas = async () => {
+  if (!selectedTeamId.value) {
+    ideas.value = [];
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("ideas")
+    .select("id, title, user_id, user_name, team_id, url, likes")
+    .eq("team_id", selectedTeamId.value)
+    .order("id", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching ideas:", error.message);
+    return;
+  }
+
+  ideas.value = data ?? [];
 };
 
 // 初期化および認証状態の監視
@@ -91,11 +95,13 @@ const applySession = async (nextSession) => {
 
   if (user.value) {
     await fetchProfile(user.value);
-    await fetchTeams(user.value.id);
+    await fetchTeams();
+    await fetchIdeas();
   } else {
     profile.value = null;
     teams.value = [];
     selectedTeamId.value = "";
+    ideas.value = [];
   }
 
   loading.value = false;
@@ -115,6 +121,10 @@ onMounted(async () => {
 
 onUnmounted(() => {
   removeAuthListener?.();
+});
+
+watch(selectedTeamId, () => {
+  void fetchIdeas();
 });
 
 // Discord ログイン処理
@@ -176,7 +186,7 @@ const createTeam = async () => {
     return;
   }
 
-  await fetchTeams(user.value.id);
+  await fetchTeams();
   selectedTeamId.value = team.id;
   creatingTeam.value = false;
   closeTeamModal();
@@ -191,7 +201,7 @@ onUnmounted(() => window.removeEventListener("keydown", handleKeydown));
 
 // 送信成功時に発火するイベントのテスト
 const handlePosted = () => {
-  console.log("received an event");
+  void fetchIdeas();
 };
 </script>
 
@@ -216,6 +226,14 @@ const handlePosted = () => {
         :team-id="selectedTeamId"
         @posted="handlePosted"
       />
+      <div class="post-list">
+        <PostCard
+          v-for="idea in ideas"
+          :key="idea.id"
+          :idea="idea"
+          @updated="fetchIdeas"
+        />
+      </div>
     </main>
 
     <div class="auth-column">
@@ -401,6 +419,12 @@ const handlePosted = () => {
 .team-empty {
   margin-bottom: 12px;
   text-align: left;
+}
+
+.post-list {
+  width: 100%;
+  max-width: 600px;
+  box-sizing: border-box;
 }
 
 .auth-column {
