@@ -2,6 +2,13 @@
 import { ref } from "vue";
 import { supabase } from "../supabase";
 
+const props = defineProps({
+  teamId: {
+    type: String,
+    required: true,
+  },
+});
+
 // 親コンポーネントへ送信完了を伝えるイベント定義
 const emit = defineEmits(["posted"]);
 
@@ -9,13 +16,19 @@ const title = ref("");
 const isLoading = ref(false);
 
 const handleSubmit = async () => {
-  if (!title.value.trim()) return;
+  if (!title.value.trim() || !props.teamId) return;
 
   isLoading.value = true;
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  if (!user) {
+    isLoading.value = false;
+    alert("投稿にはログインが必要です。");
+    return;
+  }
+
   const discordUsername =
     user?.user_metadata?.user_name ||
     user?.user_metadata?.name ||
@@ -26,7 +39,9 @@ const handleSubmit = async () => {
   const { error } = await supabase.from("ideas").insert([
     {
       title: title.value.trim(),
+      user_id: user.id,
       user_name: discordUsername,
+      team_id: props.teamId,
     },
   ]);
 

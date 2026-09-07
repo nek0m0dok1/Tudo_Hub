@@ -1,30 +1,89 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, onMounted, onUnmounted, watch } from "vue";
 import { supabase } from "./supabase";
 import PostForm from "./components/PostForm.vue";
+import PostCard from "./components/PostCard.vue";
 
 // 認証ユーザー情報（Supabase Auth）
 const user = ref(null);
 const session = ref(null);
+const teams = ref([]);
+const selectedTeamId = ref("");
+const ideas = ref([]);
+const showTeamModal = ref(false);
+const teamName = ref("");
+const creatingTeam = ref(false);
+const teamError = ref("");
 // データベースから取得したプロフィール（public.profiles）
 const profile = ref(null);
 // ローディング状態（初期値 true）
 const loading = ref(true);
 
 // プロフィール情報の取得
-const fetchProfile = async (userId) => {
-  try {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("avatar_url")
-      .eq("id", userId)
-      .single();
+const fetchProfile = async (authUser) => {
+  const username =
+    authUser.user_metadata?.user_name ||
+    authUser.user_metadata?.name ||
+    authUser.user_metadata?.full_name ||
+    "Discordユーザー";
+  const avatarUrl =
+    authUser.user_metadata?.avatar_url ||
+    authUser.user_metadata?.picture ||
+    null;
 
-    if (error) throw error;
-    profile.value = data;
-  } catch (error) {
-    console.error("Error fetching profile:", error.message);
+  const profileData = {
+    id: authUser.id,
+    username,
+    avatar_url: avatarUrl,
+  };
+
+  const { error } = await supabase
+    .from("profiles")
+    .upsert(profileData, { onConflict: "id" });
+
+  if (error) {
+    console.error("Error saving profile:", error.message);
+    return;
   }
+
+  profile.value = { avatar_url: avatarUrl };
+};
+
+const fetchTeams = async () => {
+  const { data, error } = await supabase
+    .from("teams")
+    .select("id, name")
+    .order("name");
+
+  if (error) {
+    console.error("Error fetching teams:", error.message);
+    return;
+  }
+
+  teams.value = data ?? [];
+  if (!teams.value.some((team) => team.id === selectedTeamId.value)) {
+    selectedTeamId.value = teams.value[0]?.id ?? "";
+  }
+};
+
+const fetchIdeas = async () => {
+  if (!selectedTeamId.value) {
+    ideas.value = [];
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("ideas")
+    .select("id, title, user_id, user_name, team_id, url, likes")
+    .eq("team_id", selectedTeamId.value)
+    .order("id", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching ideas:", error.message);
+    return;
+  }
+
+  ideas.value = data ?? [];
 };
 
 // 初期化および認証状態の監視
@@ -35,9 +94,14 @@ const applySession = async (nextSession) => {
   user.value = nextSession?.user ?? null;
 
   if (user.value) {
-    await fetchProfile(user.value.id);
+    await fetchProfile(user.value);
+    await fetchTeams();
+    await fetchIdeas();
   } else {
     profile.value = null;
+    teams.value = [];
+    selectedTeamId.value = "";
+    ideas.value = [];
   }
 
   loading.value = false;
@@ -59,6 +123,10 @@ onUnmounted(() => {
   removeAuthListener?.();
 });
 
+watch(selectedTeamId, () => {
+  void fetchIdeas();
+});
+
 // Discord ログイン処理
 const signInWithDiscord = async () => {
   const { error } = await supabase.auth.signInWithOAuth({
@@ -76,9 +144,64 @@ const signOut = async () => {
   if (error) console.error("Error logging out:", error.message);
 };
 
+const closeTeamModal = () => {
+  if (creatingTeam.value) return;
+  showTeamModal.value = false;
+  teamName.value = "";
+  teamError.value = "";
+};
+
+const createTeam = async () => {
+  const name = teamName.value.trim();
+  if (!name || !user.value) {
+    teamError.value = "チーム名を入力してください。";
+    return;
+  }
+
+  creatingTeam.value = true;
+  teamError.value = "";
+
+  const { data: team, error: teamErrorResponse } = await supabase
+    .from("teams")
+    .insert({ name })
+    .select("id, name")
+    .single();
+
+  if (teamErrorResponse) {
+    teamError.value = "チームを作成できませんでした。";
+    console.error("Error creating team:", teamErrorResponse.message);
+    creatingTeam.value = false;
+    return;
+  }
+
+  const { error: memberError } = await supabase.from("team_members").insert({
+    team_id: team.id,
+    user_id: user.value.id,
+  });
+
+  if (memberError) {
+    teamError.value = "チームは作成されましたが、所属登録に失敗しました。";
+    console.error("Error adding team member:", memberError.message);
+    creatingTeam.value = false;
+    return;
+  }
+
+  await fetchTeams();
+  selectedTeamId.value = team.id;
+  creatingTeam.value = false;
+  closeTeamModal();
+};
+
+const handleKeydown = (event) => {
+  if (event.key === "Escape") closeTeamModal();
+};
+
+onMounted(() => window.addEventListener("keydown", handleKeydown));
+onUnmounted(() => window.removeEventListener("keydown", handleKeydown));
+
 // 送信成功時に発火するイベントのテスト
 const handlePosted = () => {
-  console.log("received an event");
+  void fetchIdeas();
 };
 </script>
 
@@ -87,7 +210,30 @@ const handlePosted = () => {
 
   <div class="app-layout">
     <main v-if="session" class="post-form-column">
-      <PostForm @posted="handlePosted" />
+      <label class="team-selector" for="team-select">
+        チーム
+        <select id="team-select" v-model="selectedTeamId">
+          <option v-for="team in teams" :key="team.id" :value="team.id">
+            {{ team.name }}
+          </option>
+        </select>
+      </label>
+      <p v-if="!teams.length" class="team-empty">
+        所属しているチームがありません。
+      </p>
+      <PostForm
+        v-if="selectedTeamId"
+        :team-id="selectedTeamId"
+        @posted="handlePosted"
+      />
+      <div class="post-list">
+        <PostCard
+          v-for="idea in ideas"
+          :key="idea.id"
+          :idea="idea"
+          @updated="fetchIdeas"
+        />
+      </div>
     </main>
 
     <div class="auth-column">
@@ -135,9 +281,68 @@ const handlePosted = () => {
         </button>
       </div>
 
+      <button v-if="user" class="create-team-button" @click="showTeamModal = true">
+        チームを新規作成
+      </button>
+
+      <div
+        v-if="showTeamModal"
+        class="modal-backdrop"
+        role="presentation"
+        @click.self="closeTeamModal"
+      >
+        <section
+          class="team-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="team-modal-title"
+        >
+          <div class="modal-header">
+            <h2 id="team-modal-title">チームを新規作成</h2>
+            <button
+              class="modal-close"
+              type="button"
+              aria-label="モーダルを閉じる"
+              :disabled="creatingTeam"
+              @click="closeTeamModal"
+            >
+              ×
+            </button>
+          </div>
+          <form @submit.prevent="createTeam">
+            <label class="team-name-field" for="new-team-name">
+              チーム名
+              <input
+                id="new-team-name"
+                v-model="teamName"
+                type="text"
+                maxlength="50"
+                placeholder="例：開発チーム"
+                :disabled="creatingTeam"
+                autofocus
+              />
+            </label>
+            <p v-if="teamError" class="team-error" role="alert">{{ teamError }}</p>
+            <div class="modal-actions">
+              <button
+                type="button"
+                class="modal-cancel"
+                :disabled="creatingTeam"
+                @click="closeTeamModal"
+              >
+                キャンセル
+              </button>
+              <button type="submit" class="modal-submit" :disabled="creatingTeam">
+                {{ creatingTeam ? "作成中..." : "作成する" }}
+              </button>
+            </div>
+          </form>
+        </section>
+      </div>
+
       <!-- 未ログイン -->
       <div
-        v-else
+        v-if="!loading && !user"
         style="border: 1px solid #ccc; padding: 20px; border-radius: 8px"
       >
         <p>ご利用にはログインが必要です。</p>
@@ -198,6 +403,30 @@ const handlePosted = () => {
   margin: 40px 0;
 }
 
+.team-selector {
+  display: block;
+  margin-bottom: 12px;
+  text-align: left;
+}
+
+.team-selector select {
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px 12px;
+  box-sizing: border-box;
+}
+
+.team-empty {
+  margin-bottom: 12px;
+  text-align: left;
+}
+
+.post-list {
+  width: 100%;
+  max-width: 600px;
+  box-sizing: border-box;
+}
+
 .auth-column {
   flex: 0 1 360px;
   width: 100%;
@@ -210,6 +439,133 @@ const handlePosted = () => {
 .auth-column > div {
   width: 100%;
   box-sizing: border-box;
+}
+
+.create-team-button {
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px 16px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  color: var(--accent);
+  background: transparent;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.create-team-button:hover {
+  background: var(--accent-bg);
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(0 0 0 / 45%);
+}
+
+.team-modal {
+  width: min(100%, 420px);
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  box-shadow: var(--shadow);
+  box-sizing: border-box;
+  text-align: left;
+}
+
+.modal-header,
+.modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal-header {
+  margin-bottom: 20px;
+}
+
+.modal-header h2 {
+  margin: 0;
+}
+
+.modal-close {
+  padding: 0 6px;
+  border: 0;
+  color: var(--text);
+  background: transparent;
+  cursor: pointer;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.team-name-field {
+  display: block;
+  color: var(--text-h);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.team-name-field input {
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 16px;
+}
+
+.team-name-field input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.team-error {
+  margin-top: 8px;
+  color: #c0392b;
+  font-size: 14px;
+}
+
+.modal-actions {
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.modal-cancel,
+.modal-submit {
+  padding: 9px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 15px;
+}
+
+.modal-cancel {
+  border: 1px solid var(--border);
+  color: var(--text);
+  background: transparent;
+}
+
+.modal-submit {
+  border: 1px solid var(--accent);
+  color: #fff;
+  background: var(--accent);
+}
+
+.modal-cancel:disabled,
+.modal-submit:disabled,
+.modal-close:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .auth-column h1 {
