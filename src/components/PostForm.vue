@@ -13,10 +13,28 @@ const props = defineProps({
 const emit = defineEmits(["posted"]);
 
 const title = ref("");
+const url = ref("");
 const isLoading = ref(false);
+
+const isValidUrl = (value) => {
+  if (!value) return true;
+
+  try {
+    const parsedUrl = new URL(value);
+    return parsedUrl.protocol === "http:" || parsedUrl.protocol === "https:";
+  } catch {
+    return false;
+  }
+};
 
 const handleSubmit = async () => {
   if (!title.value.trim() || !props.teamId) return;
+
+  const normalizedUrl = url.value.trim();
+  if (!isValidUrl(normalizedUrl)) {
+    alert("URLはhttp://またはhttps://から始まる形式で入力してください。");
+    return;
+  }
 
   isLoading.value = true;
 
@@ -39,6 +57,7 @@ const handleSubmit = async () => {
   const { error } = await supabase.from("ideas").insert([
     {
       title: title.value.trim(),
+      url: normalizedUrl || null,
       user_id: user.id,
       user_name: discordUsername,
       team_id: props.teamId,
@@ -53,6 +72,7 @@ const handleSubmit = async () => {
   } else {
     // フォームのリセット
     title.value = "";
+    url.value = "";
 
     // 親コンポーネントへイベント通知（一覧の再取得などを促す）
     emit("posted");
@@ -70,6 +90,17 @@ const handleSubmit = async () => {
         type="text"
         placeholder="例: ねこもどきをフルボッコにするゲーム"
         required
+        :disabled="isLoading"
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="url">関連URL (任意)</label>
+      <input
+        id="url"
+        v-model="url"
+        type="url"
+        placeholder="https://example.com"
         :disabled="isLoading"
       />
     </div>
