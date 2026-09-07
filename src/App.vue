@@ -12,6 +12,10 @@ const selectedTeamId = ref("");
 const ideas = ref([]);
 const showTeamModal = ref(false);
 const teamName = ref("");
+const teamInviteCode = ref("");
+const joinInviteCode = ref("");
+const joiningTeam = ref(false);
+const joinTeamError = ref("");
 const creatingTeam = ref(false);
 const teamError = ref("");
 // データベースから取得したプロフィール（public.profiles）
@@ -49,10 +53,30 @@ const fetchProfile = async (authUser) => {
   profile.value = { avatar_url: avatarUrl };
 };
 
-const fetchTeams = async () => {
+const fetchTeams = async (userId) => {
+  const { data: memberships, error: membershipError } = await supabase
+    .from("team_members")
+    .select("team_id")
+    .eq("user_id", userId);
+
+  if (membershipError) {
+    console.error("Error fetching team memberships:", membershipError.message);
+    teams.value = [];
+    selectedTeamId.value = "";
+    return;
+  }
+
+  const teamIds = memberships.map((membership) => membership.team_id);
+  if (!teamIds.length) {
+    teams.value = [];
+    selectedTeamId.value = "";
+    return;
+  }
+
   const { data, error } = await supabase
     .from("teams")
     .select("id, name")
+    .in("id", teamIds)
     .order("name");
 
   if (error) {
@@ -95,7 +119,7 @@ const applySession = async (nextSession) => {
 
   if (user.value) {
     await fetchProfile(user.value);
-    await fetchTeams();
+    await fetchTeams(user.value.id);
     await fetchIdeas();
   } else {
     profile.value = null;
@@ -148,7 +172,16 @@ const closeTeamModal = () => {
   if (creatingTeam.value) return;
   showTeamModal.value = false;
   teamName.value = "";
+  teamInviteCode.value = "";
   teamError.value = "";
+};
+
+const generateInviteCode = () =>
+  crypto.randomUUID().replaceAll("-", "").slice(0, 8).toUpperCase();
+
+const openTeamModal = () => {
+  teamInviteCode.value = generateInviteCode();
+  showTeamModal.value = true;
 };
 
 const createTeam = async () => {
@@ -163,7 +196,7 @@ const createTeam = async () => {
 
   const { data: team, error: teamErrorResponse } = await supabase
     .from("teams")
-    .insert({ name })
+    .insert({ name, invite_code: teamInviteCode.value })
     .select("id, name")
     .single();
 
@@ -186,10 +219,50 @@ const createTeam = async () => {
     return;
   }
 
-  await fetchTeams();
+  await fetchTeams(user.value.id);
   selectedTeamId.value = team.id;
   creatingTeam.value = false;
   closeTeamModal();
+};
+
+const joinTeam = async () => {
+  const code = joinInviteCode.value.trim().toUpperCase();
+  if (!code || !user.value) {
+    joinTeamError.value = "招待コードを入力してください。";
+    return;
+  }
+
+  joiningTeam.value = true;
+  joinTeamError.value = "";
+
+  const { data: team, error: teamErrorResponse } = await supabase
+    .from("teams")
+    .select("id")
+    .eq("invite_code", code)
+    .maybeSingle();
+
+  if (teamErrorResponse || !team) {
+    joinTeamError.value = "招待コードが正しくありません。";
+    joiningTeam.value = false;
+    return;
+  }
+
+  const { error: memberError } = await supabase.from("team_members").upsert(
+    { team_id: team.id, user_id: user.value.id },
+    { onConflict: "team_id,user_id" },
+  );
+
+  if (memberError) {
+    joinTeamError.value = "チームへの参加に失敗しました。";
+    console.error("Error joining team:", memberError.message);
+    joiningTeam.value = false;
+    return;
+  }
+
+  await fetchTeams(user.value.id);
+  selectedTeamId.value = team.id;
+  joinInviteCode.value = "";
+  joiningTeam.value = false;
 };
 
 const handleKeydown = (event) => {
@@ -281,9 +354,29 @@ const handlePosted = () => {
         </button>
       </div>
 
-      <button v-if="user" class="create-team-button" @click="showTeamModal = true">
+      <button v-if="user" class="create-team-button" @click="openTeamModal">
         チームを新規作成
       </button>
+
+      <form v-if="user" class="join-team-form" @submit.prevent="joinTeam">
+        <label class="team-name-field" for="join-team-code">
+          招待コードで参加
+          <input
+            id="join-team-code"
+            v-model="joinInviteCode"
+            type="text"
+            maxlength="8"
+            placeholder="招待コード"
+            :disabled="joiningTeam"
+          />
+        </label>
+        <p v-if="joinTeamError" class="team-error" role="alert">
+          {{ joinTeamError }}
+        </p>
+        <button class="modal-submit" type="submit" :disabled="joiningTeam">
+          {{ joiningTeam ? "参加中..." : "チームに参加" }}
+        </button>
+      </form>
 
       <div
         v-if="showTeamModal"
@@ -320,6 +413,15 @@ const handlePosted = () => {
                 placeholder="例：開発チーム"
                 :disabled="creatingTeam"
                 autofocus
+              />
+            </label>
+            <label class="team-name-field" for="new-team-invite-code">
+              招待コード
+              <input
+                id="new-team-invite-code"
+                :value="teamInviteCode"
+                type="text"
+                readonly
               />
             </label>
             <p v-if="teamError" class="team-error" role="alert">{{ teamError }}</p>
@@ -455,6 +557,24 @@ const handlePosted = () => {
 
 .create-team-button:hover {
   background: var(--accent-bg);
+}
+
+.join-team-form {
+  width: 100%;
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-sizing: border-box;
+  text-align: left;
+}
+
+.join-team-form .modal-submit {
+  display: block;
+  width: auto;
+  margin-top: 12px;
+  margin-right: auto;
+  margin-left: auto;
 }
 
 .modal-backdrop {
