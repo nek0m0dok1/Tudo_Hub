@@ -19,6 +19,9 @@
 
 `teams`に招待コードを追加する。既存データには重複しないコードを設定してからNOT NULL化する。
 
+DEFAULT式を文字列として設定してしまった場合の修正SQLは
+[docs/fix-invite-code-default.sql](fix-invite-code-default.sql) を使用する。
+
 ```sql
 alter table public.teams add column if not exists invite_code text;
 create unique index if not exists teams_invite_code_key

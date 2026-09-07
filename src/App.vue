@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from "vue";
+import { computed, ref, onMounted, onUnmounted, watch } from "vue";
 import { supabase } from "./supabase";
 import PostForm from "./components/PostForm.vue";
 import PostCard from "./components/PostCard.vue";
@@ -22,6 +22,9 @@ const teamError = ref("");
 const profile = ref(null);
 // ローディング状態（初期値 true）
 const loading = ref(true);
+const selectedTeam = computed(() =>
+  teams.value.find((team) => team.id === selectedTeamId.value),
+);
 
 // プロフィール情報の取得
 const fetchProfile = async (authUser) => {
@@ -75,7 +78,7 @@ const fetchTeams = async (userId) => {
 
   const { data, error } = await supabase
     .from("teams")
-    .select("id, name")
+    .select("id, name, invite_code")
     .in("id", teamIds)
     .order("name");
 
@@ -291,6 +294,9 @@ const handlePosted = () => {
           </option>
         </select>
       </label>
+      <p v-if="selectedTeam" class="team-invite-code">
+        招待コード: <strong>{{ selectedTeam.invite_code }}</strong>
+      </p>
       <p v-if="!teams.length" class="team-empty">
         所属しているチームがありません。
       </p>
@@ -516,6 +522,18 @@ const handlePosted = () => {
   margin-top: 4px;
   padding: 8px 12px;
   box-sizing: border-box;
+}
+
+.team-invite-code {
+  margin: -4px 0 16px;
+  color: var(--text);
+  font-size: 14px;
+  text-align: left;
+}
+
+.team-invite-code strong {
+  color: var(--text-h);
+  letter-spacing: 1px;
 }
 
 .team-empty {
