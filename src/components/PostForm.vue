@@ -2,6 +2,13 @@
 import { ref } from "vue";
 import { supabase } from "../supabase";
 
+const props = defineProps({
+  teamId: {
+    type: String,
+    required: true,
+  },
+});
+
 // 親コンポーネントへ送信完了を伝えるイベント定義
 const emit = defineEmits(["posted"]);
 
@@ -9,7 +16,7 @@ const title = ref("");
 const isLoading = ref(false);
 
 const handleSubmit = async () => {
-  if (!title.value.trim()) return;
+  if (!title.value.trim() || !props.teamId) return;
 
   isLoading.value = true;
 
@@ -27,6 +34,7 @@ const handleSubmit = async () => {
     {
       title: title.value.trim(),
       user_name: discordUsername,
+      team_id: props.teamId,
     },
   ]);
 
