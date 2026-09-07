@@ -213,7 +213,7 @@ const createTeam = async () => {
   });
 
   if (memberError) {
-    teamError.value = "チームは作成されましたが、所属登録に失敗しました。";
+    teamError.value = `チームは作成されましたが、所属登録に失敗しました: ${memberError.message}`;
     console.error("Error adding team member:", memberError.message);
     creatingTeam.value = false;
     return;

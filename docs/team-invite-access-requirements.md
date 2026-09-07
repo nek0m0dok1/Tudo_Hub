@@ -39,6 +39,7 @@ UIの制御だけでは不十分なため、次のRLSをSupabase側に設定す�
 - `ideas`のSELECT: `team_id`のチームに現在ユーザーが所属している場合だけ許可
 - `ideas`のINSERT: `team_id`のチームに現在ユーザーが所属し、`user_id = auth.uid()`の場合だけ許可
 - `team_members`のINSERT: 招待コードで解決したチームへの参加を許可する
+- `team_members`のINSERT: 招待参加または作成者登録を検証済みのRPC経由で許可する
 - `team_members`のSELECT: 自分の所属行を参照できる
 - `teams`の招待コード検索: 招待コードによる参加処理に必要な最小限のSELECTだけ許可
 
@@ -81,6 +82,15 @@ with check (
   and public.is_team_member(team_id)
 );
 ```
+
+チーム作成時の`teams` INSERTと作成者の`team_members` INSERTは、検証用の`SECURITY DEFINER` RPCで同一処理にする。クライアントから`team_members`へ`user_id = auth.uid()`だけでINSERTを許可すると、ユーザーが任意の`team_id`を指定して未招待チームへ参加できるため使用しない。
+
+RPCは次の条件を満たす必要がある。
+
+- 呼び出し元を`auth.uid()`として作成者に設定する
+- 招待コードをサーバー側で生成する
+- `teams`作成と作成者の`team_members`登録を同一トランザクションで行う
+- `team_members`へ任意のユーザーIDや任意のチームIDを登録させない
 
 既存ポリシーと重複する場合は、先に既存ポリシーを確認してから置き換える。RLSを無効化したり、`service_role`キーをブラウザで使用したりしてはいけない。
 
