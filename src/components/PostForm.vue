@@ -48,9 +48,10 @@ const handleSubmit = async () => {
   }
 
   const displayName =
+    user?.user_metadata?.custom_claims?.global_name ||
     user?.user_metadata?.global_name ||
-    user?.user_metadata?.name ||
     user?.user_metadata?.full_name ||
+    user?.user_metadata?.name ||
     "名無し";
 
   // Supabase の ideas テーブルへ insert 処理

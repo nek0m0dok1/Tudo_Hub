@@ -28,18 +28,20 @@ const selectedTeam = computed(() =>
 );
 const displayName = computed(
   () =>
+    user.value?.user_metadata?.custom_claims?.global_name ||
     user.value?.user_metadata?.global_name ||
-    user.value?.user_metadata?.name ||
     user.value?.user_metadata?.full_name ||
+    user.value?.user_metadata?.name ||
     "Discordユーザー",
 );
 
 // プロフィール情報の取得
 const fetchProfile = async (authUser) => {
   const username =
+    authUser.user_metadata?.custom_claims?.global_name ||
     authUser.user_metadata?.global_name ||
-    authUser.user_metadata?.name ||
     authUser.user_metadata?.full_name ||
+    authUser.user_metadata?.name ||
     "Discordユーザー";
   const avatarUrl =
     authUser.user_metadata?.avatar_url ||
@@ -377,8 +379,6 @@ const handlePosted = () => {
             {{ displayName }}
           </h2>
         </div>
-
-        <p style="font-size: 0.8em; color: #666">ID: {{ user.id }}</p>
 
         <button
           @click="signOut"
