@@ -198,7 +198,7 @@ const handleLike = async () => {
 }
 
 .like-btn {
-  background-color: #edf2f7;
+  background-color: #f59e0b;
   border: none;
   padding: 8px 16px;
   border-radius: 20px;
