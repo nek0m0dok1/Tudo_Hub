@@ -22,6 +22,7 @@ const teamError = ref("");
 const profile = ref(null);
 // ローディング状態（初期値 true）
 const loading = ref(true);
+const authError = ref("");
 const selectedTeam = computed(() =>
   teams.value.find((team) => team.id === selectedTeamId.value),
 );
@@ -39,14 +40,14 @@ const fetchProfile = async (authUser) => {
     null;
 
   const profileData = {
-    id: authUser.id,
+    user_id: authUser.id,
     username,
     avatar_url: avatarUrl,
   };
 
   const { error } = await supabase
     .from("profiles")
-    .upsert(profileData, { onConflict: "id" });
+    .upsert(profileData, { onConflict: "user_id" });
 
   if (error) {
     console.error("Error saving profile:", error.message);
@@ -149,15 +150,25 @@ onMounted(async () => {
   );
   removeAuthListener = authData.subscription.unsubscribe;
 
-  const { data } = await supabase.auth.getSession();
+  const callbackParams = new URLSearchParams(window.location.search);
+  const callbackError = callbackParams.get("error_description");
+  if (callbackError) authError.value = callbackError;
+
+  const { data, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) {
+    authError.value = sessionError.message;
+    console.error("Error getting auth session:", sessionError.message);
+  }
+
   let currentSession = data.session;
-  const callbackCode = new URLSearchParams(window.location.search).get("code");
+  const callbackCode = callbackParams.get("code");
 
   if (!currentSession && callbackCode) {
     const { data: exchangedData, error } =
       await supabase.auth.exchangeCodeForSession(callbackCode);
 
     if (error) {
+      authError.value = error.message;
       console.error("Error exchanging OAuth code:", error.message);
     } else {
       currentSession = exchangedData.session;
@@ -476,6 +487,9 @@ const handlePosted = () => {
         v-if="!loading && !user"
         style="border: 1px solid #ccc; padding: 20px; border-radius: 8px"
       >
+        <p v-if="authError" class="auth-error" role="alert">
+          ログインに失敗しました: {{ authError }}
+        </p>
         <p>ご利用にはログインが必要です。</p>
         <button
           @click="signInWithDiscord"
