@@ -1,133 +1,138 @@
 <script setup>
-import { onMounted, ref } from 'vue'
-import { supabase } from '../supabase'
+import { onMounted, ref } from "vue";
+import { supabase } from "../supabase";
 
 const props = defineProps({
   idea: {
     type: Object,
-    required: true
-  }
-})
+    required: true,
+  },
+});
 
-const emit = defineEmits(['updated'])
-const hasLiked = ref(false)
-const isLoading = ref(false)
-const currentUser = ref(null)
+const emit = defineEmits(["updated"]);
+const hasLiked = ref(false);
+const isLoading = ref(false);
+const currentUser = ref(null);
 
 onMounted(async () => {
   const {
-    data: { user }
-  } = await supabase.auth.getUser()
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  currentUser.value = user
-  if (!user) return
+  currentUser.value = user;
+  if (!user) return;
 
   const { data, error } = await supabase
-    .from('idea_likes')
-    .select('id')
-    .eq('idea_id', props.idea.id)
-    .eq('user_id', user.id)
-    .maybeSingle()
+    .from("idea_likes")
+    .select("id")
+    .eq("idea_id", props.idea.id)
+    .eq("user_id", user.id)
+    .maybeSingle();
 
   if (error) {
-    console.error('Error checking idea like:', error.message)
-    return
+    console.error("Error checking idea like:", error.message);
+    return;
   }
 
-  hasLiked.value = Boolean(data)
-})
+  hasLiked.value = Boolean(data);
+});
 
 const handleLike = async () => {
-  if (isLoading.value) return
+  if (isLoading.value) return;
 
   if (!currentUser.value) {
-    alert('「やりたい」を押すにはログインが必要です。')
-    return
+    alert("「やりたい」を押すにはログインが必要です。");
+    return;
   }
 
-  isLoading.value = true
+  isLoading.value = true;
 
   if (hasLiked.value) {
     const { error: unlikeError } = await supabase
-      .from('idea_likes')
+      .from("idea_likes")
       .delete()
-      .eq('idea_id', props.idea.id)
-      .eq('user_id', currentUser.value.id)
+      .eq("idea_id", props.idea.id)
+      .eq("user_id", currentUser.value.id);
 
     if (unlikeError) {
-      alert('エラーが発生しました: ' + unlikeError.message)
-      isLoading.value = false
-      return
+      alert("エラーが発生しました: " + unlikeError.message);
+      isLoading.value = false;
+      return;
     }
 
     const { error: countError } = await supabase
-      .from('ideas')
+      .from("ideas")
       .update({ likes: Math.max((props.idea.likes || 0) - 1, 0) })
-      .eq('id', props.idea.id)
+      .eq("id", props.idea.id);
 
     if (countError) {
-      await supabase.from('idea_likes').insert({
+      await supabase.from("idea_likes").insert({
         idea_id: props.idea.id,
-        user_id: currentUser.value.id
-      })
-      alert('エラーが発生しました: ' + countError.message)
+        user_id: currentUser.value.id,
+      });
+      alert("エラーが発生しました: " + countError.message);
     } else {
-      hasLiked.value = false
-      emit('updated')
+      hasLiked.value = false;
+      emit("updated");
     }
-    isLoading.value = false
-    return
+    isLoading.value = false;
+    return;
   }
 
-  const { error: likeError } = await supabase.from('idea_likes').insert({
+  const { error: likeError } = await supabase.from("idea_likes").insert({
     idea_id: props.idea.id,
-    user_id: currentUser.value.id
-  })
+    user_id: currentUser.value.id,
+  });
 
   if (likeError) {
-    if (likeError.code === '23505') {
-      hasLiked.value = true
+    if (likeError.code === "23505") {
+      hasLiked.value = true;
     } else {
-      alert('エラーが発生しました: ' + likeError.message)
+      alert("エラーが発生しました: " + likeError.message);
     }
-    isLoading.value = false
-    return
+    isLoading.value = false;
+    return;
   }
 
   const { error } = await supabase
-    .from('ideas')
+    .from("ideas")
     .update({ likes: (props.idea.likes || 0) + 1 })
-    .eq('id', props.idea.id)
+    .eq("id", props.idea.id);
 
   if (error) {
     await supabase
-      .from('idea_likes')
+      .from("idea_likes")
       .delete()
-      .eq('idea_id', props.idea.id)
-      .eq('user_id', currentUser.value.id)
-    alert('エラーが発生しました: ' + error.message)
+      .eq("idea_id", props.idea.id)
+      .eq("user_id", currentUser.value.id);
+    alert("エラーが発生しました: " + error.message);
   } else {
-    hasLiked.value = true
-    emit('updated')
+    hasLiked.value = true;
+    emit("updated");
   }
-  isLoading.value = false
-}
+  isLoading.value = false;
+};
 </script>
 
 <template>
   <div class="card">
     <div class="card-header">
       <h3 class="idea-title">{{ idea.title }}</h3>
-      <span class="user-name">by {{ idea.user_name || 'John Doe' }}</span>
+      <span class="user-name">by {{ idea.user_name || "John Doe" }}</span>
     </div>
 
     <!-- 🔗 URLが存在する場合のみリンク枠を表示 -->
     <div v-if="idea.url" class="card-link">
-      <a :href="idea.url" target="_blank" rel="noopener noreferrer" class="url-btn">
+      <a
+        :href="idea.url"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="url-btn"
+      >
         🔗 関連リンクを開く
       </a>
     </div>
-    
+
     <div class="card-footer">
       <button
         @click="handleLike"
@@ -135,7 +140,7 @@ const handleLike = async () => {
         :class="{ 'is-liked': hasLiked }"
         :disabled="isLoading"
       >
-        {{ hasLiked ? 'キャンセル' : '🙌 やりたい！' }}
+        {{ hasLiked ? "キャンセル" : "🙌 やりたい！" }}
         <span class="like-count">{{ idea.likes }}</span>
       </button>
     </div>
@@ -149,7 +154,7 @@ const handleLike = async () => {
   border-radius: 8px;
   padding: 16px;
   margin-bottom: 12px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .card-header {

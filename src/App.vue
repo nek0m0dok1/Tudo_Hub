@@ -457,7 +457,9 @@ const handlePosted = () => {
                 readonly
               />
             </label>
-            <p v-if="teamError" class="team-error" role="alert">{{ teamError }}</p>
+            <p v-if="teamError" class="team-error" role="alert">
+              {{ teamError }}
+            </p>
             <div class="modal-actions">
               <button
                 type="button"
@@ -467,7 +469,11 @@ const handlePosted = () => {
               >
                 キャンセル
               </button>
-              <button type="submit" class="modal-submit" :disabled="creatingTeam">
+              <button
+                type="submit"
+                class="modal-submit"
+                :disabled="creatingTeam"
+              >
                 {{ creatingTeam ? "作成中..." : "作成する" }}
               </button>
             </div>
