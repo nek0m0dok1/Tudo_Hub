@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref, onMounted, onUnmounted, watch } from "vue";
+import { Analytics } from "@vercel/analytics/vue";
 import { supabase } from "./supabase";
 import PostForm from "./components/PostForm.vue";
 import PostCard from "./components/PostCard.vue";
@@ -508,6 +509,8 @@ const handlePosted = () => {
       </div>
     </div>
   </div>
+
+  <Analytics />
 </template>
 
 <style scoped>
