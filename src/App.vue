@@ -115,12 +115,16 @@ const fetchIdeas = async () => {
 
 // 初期化および認証状態の監視
 let removeAuthListener;
+let authStateTimer;
+let sessionRequestId = 0;
 
 const applySession = async (nextSession) => {
+  const requestId = ++sessionRequestId;
   session.value = nextSession;
   user.value = nextSession?.user ?? null;
 
   if (user.value) {
+    loading.value = true;
     await fetchProfile(user.value);
     await fetchTeams(user.value.id);
     await fetchIdeas();
@@ -131,22 +135,26 @@ const applySession = async (nextSession) => {
     ideas.value = [];
   }
 
+  if (requestId !== sessionRequestId) return;
   loading.value = false;
 };
 
 onMounted(async () => {
-  const { data } = await supabase.auth.getSession();
-  await applySession(data.session);
-
   const { data: authData } = supabase.auth.onAuthStateChange(
     (_event, nextSession) => {
-      void applySession(nextSession);
+      authStateTimer = window.setTimeout(() => {
+        void applySession(nextSession);
+      }, 0);
     },
   );
   removeAuthListener = authData.subscription.unsubscribe;
+
+  const { data } = await supabase.auth.getSession();
+  await applySession(data.session);
 });
 
 onUnmounted(() => {
+  window.clearTimeout(authStateTimer);
   removeAuthListener?.();
 });
 
