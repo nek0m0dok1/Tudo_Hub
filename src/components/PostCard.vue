@@ -118,7 +118,12 @@ const handleLike = async () => {
   <div class="card">
     <div class="card-header">
       <h3 class="idea-title">{{ idea.title }}</h3>
-      <span class="user-name">by {{ idea.user_name || "John Doe" }}</span>
+      <span class="user-name">
+        by {{ idea.display_name || "Discordユーザー" }}
+        <span v-if="idea.user_name" class="user-username">
+          (@{{ idea.user_name }})
+        </span>
+      </span>
     </div>
 
     <!-- 🔗 URLが存在する場合のみリンク枠を表示 -->

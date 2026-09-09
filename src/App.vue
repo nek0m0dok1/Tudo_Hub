@@ -37,10 +37,16 @@ const displayName = computed(
 
 // プロフィール情報の取得
 const fetchProfile = async (authUser) => {
-  const username =
+  const displayName =
     authUser.user_metadata?.custom_claims?.global_name ||
     authUser.user_metadata?.global_name ||
     authUser.user_metadata?.full_name ||
+    authUser.user_metadata?.name ||
+    "Discordユーザー";
+  const username =
+    authUser.user_metadata?.custom_claims?.username ||
+    authUser.user_metadata?.username ||
+    authUser.user_metadata?.preferred_username ||
     authUser.user_metadata?.name ||
     "Discordユーザー";
   const avatarUrl =
@@ -51,6 +57,7 @@ const fetchProfile = async (authUser) => {
   const profileData = {
     user_id: authUser.id,
     username,
+    display_name: displayName,
     avatar_url: avatarUrl,
   };
 
@@ -120,7 +127,28 @@ const fetchIdeas = async () => {
     return;
   }
 
-  ideas.value = data ?? [];
+  const userIds = [...new Set((data ?? []).map((idea) => idea.user_id))];
+  if (!userIds.length) {
+    ideas.value = data ?? [];
+    return;
+  }
+
+  const { data: profiles, error: profileError } = await supabase
+    .from("profiles")
+    .select("user_id, display_name")
+    .in("user_id", userIds);
+
+  if (profileError) {
+    console.error("Error fetching profiles:", profileError.message);
+  }
+
+  const displayNames = new Map(
+    (profiles ?? []).map((profile) => [profile.user_id, profile.display_name]),
+  );
+  ideas.value = (data ?? []).map((idea) => ({
+    ...idea,
+    display_name: displayNames.get(idea.user_id),
+  }));
 };
 
 // 初期化および認証状態の監視
@@ -379,6 +407,8 @@ const handlePosted = () => {
             {{ displayName }}
           </h2>
         </div>
+
+        <p style="font-size: 0.8em; color: #666">ID: {{ user.id }}</p>
 
         <button
           @click="signOut"
