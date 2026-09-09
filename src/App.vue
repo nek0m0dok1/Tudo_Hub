@@ -272,32 +272,24 @@ const joinTeam = async () => {
   joiningTeam.value = true;
   joinTeamError.value = "";
 
-  const { data: team, error: teamErrorResponse } = await supabase
-    .from("teams")
-    .select("id")
-    .eq("invite_code", code)
-    .maybeSingle();
-
-  if (teamErrorResponse || !team) {
-    joinTeamError.value = "招待コードが正しくありません。";
-    joiningTeam.value = false;
-    return;
-  }
-
-  const { error: memberError } = await supabase.from("team_members").upsert(
-    { team_id: team.id, user_id: user.value.id },
-    { onConflict: "team_id,user_id" },
+  const { data: teamId, error: memberError } = await supabase.rpc(
+    "join_team_by_invite_code",
+    { invite_code_input: code },
   );
 
   if (memberError) {
-    joinTeamError.value = "チームへの参加に失敗しました。";
+    if (memberError.message.includes("Invalid invite code")) {
+      joinTeamError.value = "招待コードが正しくありません。";
+    } else {
+      joinTeamError.value = "チームへの参加に失敗しました。";
+    }
     console.error("Error joining team:", memberError.message);
     joiningTeam.value = false;
     return;
   }
 
   await fetchTeams(user.value.id);
-  selectedTeamId.value = team.id;
+  selectedTeamId.value = teamId;
   joinInviteCode.value = "";
   joiningTeam.value = false;
 };
