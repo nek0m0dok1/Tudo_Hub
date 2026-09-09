@@ -282,7 +282,7 @@ const handlePosted = () => {
 </script>
 
 <template>
-  <h1 class="page-title">Game Inbox</h1>
+  <h1 class="page-title">Tudo Hub</h1>
 
   <div class="app-layout">
     <main v-if="session" class="post-form-column">
