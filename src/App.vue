@@ -27,11 +27,18 @@ const authError = ref("");
 const selectedTeam = computed(() =>
   teams.value.find((team) => team.id === selectedTeamId.value),
 );
+const displayName = computed(
+  () =>
+    user.value?.user_metadata?.global_name ||
+    user.value?.user_metadata?.name ||
+    user.value?.user_metadata?.full_name ||
+    "Discordユーザー",
+);
 
 // プロフィール情報の取得
 const fetchProfile = async (authUser) => {
   const username =
-    authUser.user_metadata?.user_name ||
+    authUser.user_metadata?.global_name ||
     authUser.user_metadata?.name ||
     authUser.user_metadata?.full_name ||
     "Discordユーザー";
@@ -368,12 +375,7 @@ const handlePosted = () => {
 
         <div style="margin: 15px 0">
           <h2>
-            {{
-              user.user_metadata?.user_name ||
-              user.user_metadata?.name ||
-              user.user_metadata?.full_name ||
-              "Discordユーザー"
-            }}
+            {{ displayName }}
           </h2>
         </div>
 

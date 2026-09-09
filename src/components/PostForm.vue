@@ -47,8 +47,8 @@ const handleSubmit = async () => {
     return;
   }
 
-  const discordUsername =
-    user?.user_metadata?.user_name ||
+  const displayName =
+    user?.user_metadata?.global_name ||
     user?.user_metadata?.name ||
     user?.user_metadata?.full_name ||
     "名無し";
@@ -59,7 +59,7 @@ const handleSubmit = async () => {
       title: title.value.trim(),
       url: normalizedUrl || null,
       user_id: user.id,
-      user_name: discordUsername,
+      user_name: displayName,
       team_id: props.teamId,
     },
   ]);
