@@ -150,7 +150,22 @@ onMounted(async () => {
   removeAuthListener = authData.subscription.unsubscribe;
 
   const { data } = await supabase.auth.getSession();
-  await applySession(data.session);
+  let currentSession = data.session;
+  const callbackCode = new URLSearchParams(window.location.search).get("code");
+
+  if (!currentSession && callbackCode) {
+    const { data: exchangedData, error } =
+      await supabase.auth.exchangeCodeForSession(callbackCode);
+
+    if (error) {
+      console.error("Error exchanging OAuth code:", error.message);
+    } else {
+      currentSession = exchangedData.session;
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }
+
+  await applySession(currentSession);
 });
 
 onUnmounted(() => {
