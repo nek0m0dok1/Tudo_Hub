@@ -118,7 +118,7 @@ const fetchIdeas = async () => {
 
   const { data, error } = await supabase
     .from("ideas")
-    .select("id, title, user_id, user_name, team_id, url, likes")
+    .select("id, title, user_id, team_id, url, likes")
     .eq("team_id", selectedTeamId.value)
     .order("id", { ascending: false });
 

@@ -53,12 +53,6 @@ const handleSubmit = async () => {
     user?.user_metadata?.full_name ||
     user?.user_metadata?.name ||
     "名無し";
-  const username =
-    user?.user_metadata?.custom_claims?.username ||
-    user?.user_metadata?.username ||
-    user?.user_metadata?.preferred_username ||
-    user?.user_metadata?.name ||
-    displayName;
 
   // Supabase の ideas テーブルへ insert 処理
   const { error } = await supabase.from("ideas").insert([
@@ -66,7 +60,7 @@ const handleSubmit = async () => {
       title: title.value.trim(),
       url: normalizedUrl || null,
       user_id: user.id,
-      user_name: username,
+      display_name: displayName,
       team_id: props.teamId,
     },
   ]);
