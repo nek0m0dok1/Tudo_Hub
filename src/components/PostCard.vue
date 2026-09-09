@@ -120,9 +120,6 @@ const handleLike = async () => {
       <h3 class="idea-title">{{ idea.title }}</h3>
       <span class="user-name">
         by {{ idea.display_name || "Discordユーザー" }}
-        <span v-if="idea.user_name" class="user-username">
-          (@{{ idea.user_name }})
-        </span>
       </span>
     </div>
 
