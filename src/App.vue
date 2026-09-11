@@ -395,8 +395,9 @@ const handlePosted = () => {
 
       <button
         v-if="user"
+        type="button"
         class="create-team-button"
-        @click="openTeamModal"
+        @click.prevent="openTeamModal"
       >
         チームを新規作成
       </button>
