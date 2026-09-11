@@ -117,14 +117,19 @@ const handleLike = async () => {
 <template>
   <div class="card">
     <div class="card-header">
-      <h3 class="idea-title">{{ idea.title }}</h3>
+      <h3 class="idea-title">
+        {{ idea.title }}
+      </h3>
       <span class="user-name">
         by {{ idea.display_name || "Discordユーザー" }}
       </span>
     </div>
 
     <!-- 🔗 URLが存在する場合のみリンク枠を表示 -->
-    <div v-if="idea.url" class="card-link">
+    <div
+      v-if="idea.url"
+      class="card-link"
+    >
       <a
         :href="idea.url"
         target="_blank"
@@ -137,10 +142,10 @@ const handleLike = async () => {
 
     <div class="card-footer">
       <button
-        @click="handleLike"
         class="like-btn"
         :class="{ 'is-liked': hasLiked }"
         :disabled="isLoading"
+        @click="handleLike"
       >
         {{ hasLiked ? "キャンセル" : "🙌 やりたい！" }}
         <span class="like-count">{{ idea.likes }}</span>

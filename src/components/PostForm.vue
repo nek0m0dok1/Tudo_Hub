@@ -82,7 +82,10 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <form @submit.prevent="handleSubmit" class="idea-form">
+  <form
+    class="idea-form"
+    @submit.prevent="handleSubmit"
+  >
     <div class="form-group">
       <label for="title">やりたいこと (必須)</label>
       <input
@@ -92,7 +95,7 @@ const handleSubmit = async () => {
         placeholder="例: ねこもどきをフルボッコにするゲーム"
         required
         :disabled="isLoading"
-      />
+      >
     </div>
 
     <div class="form-group">
@@ -103,10 +106,13 @@ const handleSubmit = async () => {
         type="url"
         placeholder="https://example.com"
         :disabled="isLoading"
-      />
+      >
     </div>
 
-    <button type="submit" :disabled="isLoading">
+    <button
+      type="submit"
+      :disabled="isLoading"
+    >
       {{ isLoading ? "送信中..." : "ゲームを提案する！" }}
     </button>
   </form>
