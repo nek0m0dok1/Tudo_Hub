@@ -1,6 +1,5 @@
 <script setup>
-import { ref } from "vue";
-import { supabase } from "../supabase";
+import { useIdeaForm } from "../composables/useIdeaForm";
 
 const props = defineProps({
   teamId: {
@@ -12,77 +11,13 @@ const props = defineProps({
 // 親コンポーネントへ送信完了を伝えるイベント定義
 const emit = defineEmits(["posted"]);
 
-const title = ref("");
-const url = ref("");
-const isLoading = ref(false);
-
-const isValidUrl = (value) => {
-  if (!value) return true;
-
-  try {
-    const parsedUrl = new URL(value);
-    return parsedUrl.protocol === "http:" || parsedUrl.protocol === "https:";
-  } catch {
-    return false;
-  }
-};
-
-const handleSubmit = async () => {
-  if (!title.value.trim() || !props.teamId) return;
-
-  const normalizedUrl = url.value.trim();
-  if (!isValidUrl(normalizedUrl)) {
-    alert("URLはhttp://またはhttps://から始まる形式で入力してください。");
-    return;
-  }
-
-  isLoading.value = true;
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    isLoading.value = false;
-    alert("投稿にはログインが必要です。");
-    return;
-  }
-
-  const displayName =
-    user?.user_metadata?.custom_claims?.global_name ||
-    user?.user_metadata?.global_name ||
-    user?.user_metadata?.full_name ||
-    user?.user_metadata?.name ||
-    "名無し";
-
-  // Supabase の ideas テーブルへ insert 処理
-  const { error } = await supabase.from("ideas").insert([
-    {
-      title: title.value.trim(),
-      url: normalizedUrl || null,
-      user_id: user.id,
-      display_name: displayName,
-      team_id: props.teamId,
-    },
-  ]);
-
-  isLoading.value = false;
-
-  if (error) {
-    alert("投稿に失敗しました: " + error.message);
-    console.error(error);
-  } else {
-    // フォームのリセット
-    title.value = "";
-    url.value = "";
-
-    // 親コンポーネントへイベント通知（一覧の再取得などを促す）
-    emit("posted");
-  }
-};
+const { title, url, isLoading, handleSubmit } = useIdeaForm(props.teamId, () =>
+  emit("posted"),
+);
 </script>
 
 <template>
-  <form @submit.prevent="handleSubmit" class="idea-form">
+  <form class="idea-form" @submit.prevent="handleSubmit">
     <div class="form-group">
       <label for="title">やりたいこと (必須)</label>
       <input
