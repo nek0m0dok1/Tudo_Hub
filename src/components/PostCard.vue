@@ -1,6 +1,5 @@
 <script setup>
-import { onMounted, ref } from "vue";
-import { supabase } from "../supabase";
+import { useIdeaLike } from "../composables/useIdeaLike";
 
 const props = defineProps({
   idea: {
@@ -10,108 +9,9 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["updated"]);
-const hasLiked = ref(false);
-const isLoading = ref(false);
-const currentUser = ref(null);
-
-onMounted(async () => {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  currentUser.value = user;
-  if (!user) return;
-
-  const { data, error } = await supabase
-    .from("idea_likes")
-    .select("id")
-    .eq("idea_id", props.idea.id)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (error) {
-    console.error("Error checking idea like:", error.message);
-    return;
-  }
-
-  hasLiked.value = Boolean(data);
-});
-
-const handleLike = async () => {
-  if (isLoading.value) return;
-
-  if (!currentUser.value) {
-    alert("「やりたい」を押すにはログインが必要です。");
-    return;
-  }
-
-  isLoading.value = true;
-
-  if (hasLiked.value) {
-    const { error: unlikeError } = await supabase
-      .from("idea_likes")
-      .delete()
-      .eq("idea_id", props.idea.id)
-      .eq("user_id", currentUser.value.id);
-
-    if (unlikeError) {
-      alert("エラーが発生しました: " + unlikeError.message);
-      isLoading.value = false;
-      return;
-    }
-
-    const { error: countError } = await supabase
-      .from("ideas")
-      .update({ likes: Math.max((props.idea.likes || 0) - 1, 0) })
-      .eq("id", props.idea.id);
-
-    if (countError) {
-      await supabase.from("idea_likes").insert({
-        idea_id: props.idea.id,
-        user_id: currentUser.value.id,
-      });
-      alert("エラーが発生しました: " + countError.message);
-    } else {
-      hasLiked.value = false;
-      emit("updated");
-    }
-    isLoading.value = false;
-    return;
-  }
-
-  const { error: likeError } = await supabase.from("idea_likes").insert({
-    idea_id: props.idea.id,
-    user_id: currentUser.value.id,
-  });
-
-  if (likeError) {
-    if (likeError.code === "23505") {
-      hasLiked.value = true;
-    } else {
-      alert("エラーが発生しました: " + likeError.message);
-    }
-    isLoading.value = false;
-    return;
-  }
-
-  const { error } = await supabase
-    .from("ideas")
-    .update({ likes: (props.idea.likes || 0) + 1 })
-    .eq("id", props.idea.id);
-
-  if (error) {
-    await supabase
-      .from("idea_likes")
-      .delete()
-      .eq("idea_id", props.idea.id)
-      .eq("user_id", currentUser.value.id);
-    alert("エラーが発生しました: " + error.message);
-  } else {
-    hasLiked.value = true;
-    emit("updated");
-  }
-  isLoading.value = false;
-};
+const { hasLiked, isLoading, handleLike } = useIdeaLike(props.idea, () =>
+  emit("updated"),
+);
 </script>
 
 <template>
@@ -126,10 +26,7 @@ const handleLike = async () => {
     </div>
 
     <!-- 🔗 URLが存在する場合のみリンク枠を表示 -->
-    <div
-      v-if="idea.url"
-      class="card-link"
-    >
+    <div v-if="idea.url" class="card-link">
       <a
         :href="idea.url"
         target="_blank"

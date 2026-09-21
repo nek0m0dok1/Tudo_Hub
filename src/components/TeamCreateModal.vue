@@ -1,7 +1,7 @@
 <script setup>
 import { ref, watch } from "vue";
-import { supabase } from "../supabase";
 import BaseModal from "./BaseModal.vue";
+import { useTeams } from "../composables/useTeams";
 
 const props = defineProps({
   user: {
@@ -15,6 +15,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["close", "team-created"]);
+const { createTeam: saveTeam } = useTeams();
 
 const teamName = ref("");
 const teamInviteCode = ref("");
@@ -52,27 +53,14 @@ const createTeam = async () => {
   creatingTeam.value = true;
   teamError.value = "";
 
-  const { data: team, error: teamErrorResponse } = await supabase
-    .from("teams")
-    .insert({ name, invite_code: teamInviteCode.value })
-    .select("id, name")
-    .single();
-
-  if (teamErrorResponse) {
+  const { team, error } = await saveTeam(
+    name,
+    teamInviteCode.value,
+    props.user.id,
+  );
+  if (error) {
     teamError.value = "チームを作成できませんでした。";
-    console.error("Error creating team:", teamErrorResponse.message);
-    creatingTeam.value = false;
-    return;
-  }
-
-  const { error: memberError } = await supabase.from("team_members").insert({
-    team_id: team.id,
-    user_id: props.user.id,
-  });
-
-  if (memberError) {
-    teamError.value = `チームは作成されましたが、所属登録に失敗しました: ${memberError.message}`;
-    console.error("Error adding team member:", memberError.message);
+    console.error("Error creating team:", error.message);
     creatingTeam.value = false;
     return;
   }
@@ -89,14 +77,8 @@ const createTeam = async () => {
     :close-disabled="creatingTeam"
     @close="closeTeamModal"
   >
-    <form
-      id="create-team-form"
-      @submit.prevent="createTeam"
-    >
-      <label
-        class="team-name-field"
-        for="new-team-name"
-      >
+    <form id="create-team-form" @submit.prevent="createTeam">
+      <label class="team-name-field" for="new-team-name">
         チーム名
         <input
           id="new-team-name"
@@ -106,25 +88,18 @@ const createTeam = async () => {
           placeholder="例：開発チーム"
           :disabled="creatingTeam"
           autofocus
-        >
+        />
       </label>
-      <label
-        class="team-name-field"
-        for="new-team-invite-code"
-      >
+      <label class="team-name-field" for="new-team-invite-code">
         招待コード
         <input
           id="new-team-invite-code"
           :value="teamInviteCode"
           type="text"
           readonly
-        >
+        />
       </label>
-      <p
-        v-if="teamError"
-        class="team-error"
-        role="alert"
-      >
+      <p v-if="teamError" class="team-error" role="alert">
         {{ teamError }}
       </p>
     </form>
@@ -156,7 +131,6 @@ const createTeam = async () => {
   font-size: 15px;
   font-weight: 600;
 }
-
 .team-name-field input {
   width: 100%;
   margin-top: 6px;
@@ -169,18 +143,15 @@ const createTeam = async () => {
   font: inherit;
   font-size: 16px;
 }
-
 .team-name-field input:focus {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
-
 .team-error {
   margin-top: 8px;
   color: #c0392b;
   font-size: 14px;
 }
-
 .modal-cancel,
 .modal-submit {
   padding: 9px 14px;
@@ -189,19 +160,16 @@ const createTeam = async () => {
   font: inherit;
   font-size: 15px;
 }
-
 .modal-cancel {
   border: 1px solid var(--border);
   color: var(--text);
   background: transparent;
 }
-
 .modal-submit {
   border: 1px solid var(--accent);
   color: #fff;
   background: var(--accent);
 }
-
 .modal-cancel:disabled,
 .modal-submit:disabled {
   cursor: not-allowed;

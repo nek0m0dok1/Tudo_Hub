@@ -67,10 +67,7 @@ onUnmounted(() => window.removeEventListener("keydown", handleKeydown));
         <div class="modal-body">
           <slot />
         </div>
-        <footer
-          v-if="$slots.footer"
-          class="modal-actions"
-        >
+        <footer v-if="$slots.footer" class="modal-actions">
           <slot name="footer" />
         </footer>
       </section>
