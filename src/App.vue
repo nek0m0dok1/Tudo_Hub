@@ -40,13 +40,23 @@ onUnmounted(() => authSubscription?.unsubscribe());
       v-if="auth.session.value"
       :teams="teams.teams.value"
       :selected-team-id="teams.selectedTeamId.value"
-      :ideas="ideas.value"
+      :ideas="ideas"
       @update:selected-team-id="teams.selectedTeamId.value = $event"
       @posted="refreshIdeas"
       @updated="refreshIdeas"
     />
-    <aside v-if="auth.user.value" class="team-column">
+    <aside class="side-column">
+      <AuthPanel
+        :user="auth.user.value"
+        :profile="auth.profile.value"
+        :display-name="auth.displayName.value"
+        :loading="auth.loading.value"
+        :auth-error="auth.authError.value"
+        @sign-in="auth.signInWithDiscord"
+        @sign-out="auth.signOut"
+      />
       <TeamPanel
+        v-if="auth.user.value"
         :user="auth.user.value"
         :teams="teams.teams.value"
         :selected-team-id="teams.selectedTeamId.value"
@@ -57,15 +67,6 @@ onUnmounted(() => authSubscription?.unsubscribe());
         @team-created="handleTeamCreated"
       />
     </aside>
-    <AuthPanel
-      :user="auth.user.value"
-      :profile="auth.profile.value"
-      :display-name="auth.displayName.value"
-      :loading="auth.loading.value"
-      :auth-error="auth.authError.value"
-      @sign-in="auth.signInWithDiscord"
-      @sign-out="auth.signOut"
-    />
   </div>
 </template>
 
@@ -86,11 +87,10 @@ onUnmounted(() => authSubscription?.unsubscribe());
   align-items: flex-start;
   justify-content: center;
 }
-.team-column {
-  flex: 0 1 260px;
+.side-column {
+  flex: 0 1 360px;
   width: 100%;
-  max-width: 260px;
-  margin: 40px 0;
+  max-width: 360px;
 }
 @media (max-width: 760px) {
   .app-layout {
@@ -98,9 +98,8 @@ onUnmounted(() => authSubscription?.unsubscribe());
     align-items: center;
     gap: 0;
   }
-  .team-column {
+  .side-column {
     max-width: 600px;
-    margin: 0 0 24px;
   }
 }
 </style>
