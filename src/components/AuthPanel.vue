@@ -24,7 +24,6 @@ defineEmits(["sign-in", "sign-out"]);
         height="80"
       />
       <h2>{{ displayName }}</h2>
-      <p class="user-id">ID: {{ user.id }}</p>
       <button class="sign-out-button" @click="$emit('sign-out')">
         ログアウト
       </button>
@@ -62,10 +61,6 @@ img {
 }
 h2 {
   margin: 15px 0;
-}
-.user-id {
-  font-size: 0.8em;
-  color: var(--text);
 }
 button {
   padding: 8px 16px;
